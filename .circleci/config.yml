@@ -1,0 +1,36 @@
+version: 2.1
+
+orbs:
+ android: circleci/android@0.2.0
+ testfairy: testfairy/uploader@2.0.1
+
+language: java
+sudo: false
+
+jobs:
+  build:
+    working_directory: ~/ProjectWork
+    docker:
+      - image: circleci/android:api-30
+    environment:
+      JVM_OPTS: -Xmx4g
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+    steps:
+      - checkout
+      - run:
+          name: Get Commit Message
+          command: echo "export COMMIT_MESSAGE=\"$(git log --format=oneline -n 1 $CIRCLE_SHA1)\"" >> ~/.bashrc
+      - run:
+          name: Change Permission
+          command: chmod +x gradlew
+      - run:
+          name: Run Lint
+          command: ./gradlew lintProductionRelease
+      - run:
+          name: Deploy Application
+          command: ./gradlew assembleProductionRelease
+      - testfairy/uploader:
+          api-key: TESTFAIRY_KEY
+          auto-update: 'on'
+          changelog: $CIRCLE_SHA1
+          file: /home/circleci/code/app/build/outputs/apk/production/release*.apk
